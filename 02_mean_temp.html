@@ -2,43 +2,21 @@
     <head>
         <script src="js/d3.min.js"></script>
         <script src="js/underscore.js"></script>
+        <link rel="stylesheet" type="text/css" href="css/style.css">
 
-        <style>
-        body{
-            font-family: "BentonSans";
-        }
-          .container{
-            margin-top: 50px;
-            margin-left: auto;
-            margin-right: auto;
-            width: 960px;
-          }
-            .axis path,
-            .axis line {
-                fill: none;
-                stroke: #eee;
-                opacity: 0.8;
-                shape-rendering: crispEdges;
-            }
-
-            .axis text {
-                font-family: "BentonSans";
-                font-size: 9px;
-                fill: #ddd;
-            }
-            h2{
-                font-weight:500;
-                text-align: center;
-                color:#222;
-            }
-        </style>
     </head>
         <body>
-            
-            <div class="container">
-                <h2>Maastricht gem. temp 2013</h2>
-            </div>
+            <select>
+                <!-- data/mean_temp_maastricht.csv -->              
+                <option value="maastricht">Maastricht</option>
+                <!-- data/mean_temp_debilt.csv -->              
+                <option value="debilt">De Bilt</option>
+            </select>
+
+            <div class="container"></div>
+
         <script>
+
             d3.csv('data/mean_temp_maastricht.csv', function(data){
 
                 var temp_data = d3.nest()
@@ -48,108 +26,114 @@
                                 .sortKeys(d3.ascending)
                                 .entries(data)
 
-                                console.log()
+                function update(_data){
 
-                var h = 350;
-                var w = 960;
-                var padding = 30;
+                // SVG config
+                    var h = 350;
+                    var w = 960;
+                    var padding = 30;
 
-        // Set up colorscale
-                var ext = d3.extent(temp_data, function(d){
-                  return parseInt(d.values[0].TG);
-                });
+                // Set up colorscale
+                    var ext = d3.extent(_data, function(d){
+                      return parseInt(d.values[0].TG);
+                    });
 
-                var color = d3.scale.linear()
-                    .domain([ext[0], ext[1]])
-                    .range(["#94FDFF", "#FF004E"]);
+                    var color = d3.scale.linear()
+                        .domain([ext[0], ext[1]])
+                        .range(["#94FDFF", "#FF004E"]);
 
-        // Radius scale
-                var rScale = d3.scale.linear()
-                     .domain([0, ext[1]])
-                     .range([2, 10]);
+                // Radius scale
+                    var rScale = d3.scale.linear()
+                         .domain([0, ext[1]])
+                         .range([2, 10]);
 
-        // Set up scales
-                var xScale = d3.scale.linear()
-                     .domain([0, temp_data.length])
-                     .range([padding, w - padding]);
+                // Set up scales
+                    var xScale = d3.scale.linear()
+                         .domain([0, _data.length])
+                         .range([padding, w - padding]);
 
-                var yScale = d3.scale.linear()
-                     .domain([ext[0] /10, (ext[1] + 15) / 10])
-                     .range([h - padding, padding]);
+                    var yScale = d3.scale.linear()
+                         .domain([ext[0] /10, (ext[1] + 15) / 10])
+                         .range([h - padding, padding]);
 
-        // Set up Axis
-                var xAxis = d3.svg.axis()
-                  .scale(xScale)
-                  .orient("bottom")
-                  .tickSize(2)
-                  .tickValues(xScale.domain())
+                // Set up Axis
+                    var xAxis = d3.svg.axis()
+                      .scale(xScale)
+                      .orient("bottom")
+                      .tickSize(2)
+                      .tickValues(xScale.domain())
 
-                var yAxis = d3.svg.axis()
-                  .scale(yScale)
-                  .orient("left")
-                  .ticks(10)
+                    var yAxis = d3.svg.axis()
+                      .scale(yScale)
+                      .orient("left")
+                      .ticks(10)
 
-                    console.log(ext)
+                // Add svg container for bubble_plot
+                    var svg = d3.select('.container')
+                        .append('svg')
+                        .attr('id', '#bubble_plot')
+                        .attr('height', h)
+                        .attr('width', w);
 
-                var svg = d3.select('.container')
-                    .append('svg')
-                    .attr('height', h)
-                    .attr('width', w);
+                // Add Month Grid
+                    var months = d3.select('svg')
+                        .selectAll('rect')
+                        .data(_data)
+                        .enter()
+                        .append('rect')
+                        .attr('fill', function(d, i){
+                            str = d.key
+                            calc_str = str.slice(4, -2)
+                            if(calc_str % 2 != 0){
+                                return '#ffffff'
+                            }else{
+                                return '#fafafa'
+                            }
+                        })
+                        .attr('width', 2)
+                        .attr('height', h - padding * 2)
+                        .attr('x', function(d, i){
+                            return xScale(i)
+                        })
+                        .attr('y', 0 + padding)
 
-        // Add Month Grid
-                var months = d3.select('svg')
-                    .selectAll('rect')
-                    .data(temp_data)
-                    .enter()
-                    .append('rect')
-                    .attr('fill', function(d, i){
-                        str = d.key
-                        calc_str = str.slice(4, -2)
-                        if(calc_str % 2 != 0){
-                            return '#ffffff'
-                        }else{
-                            return '#fafafa'
-                        }
-                    })
-                    .attr('width', 2)
-                    .attr('height', h - padding * 2)
-                    .attr('x', function(d, i){
-                        return xScale(i)
-                    })
-                    .attr('y', 0 + padding)
+                // Call Axis
+                    svg.append("g")
+                        .attr("class", "axis")
+                        .attr("transform", "translate(" + padding + ",0)")
+                        .call(yAxis);
 
+                    svg.append("g")
+                        .attr("class", "axis") 
+                        .attr("transform", "translate(0," + (h - padding) + ")")
+                        .call(xAxis);
 
-        // Call Axis
-                svg.append("g")
-                    .attr("class", "axis")
-                    .attr("transform", "translate(" + padding + ",0)")
-                    .call(yAxis);
+                // Add groups for circles
+                    var groups = d3.select('svg')
+                        .selectAll('g')
+                        .data(_data)
+                        .enter()
+                        .append('g')
+                        .attr('transform', function(d, i){
+                            return 'translate(' + xScale(i) + ',0)';
+                        })
 
-                svg.append("g")
-                    .attr("class", "axis") 
-                    .attr("transform", "translate(0," + (h - padding) + ")")
-                    .call(xAxis);
+                // Add circles to groups
+                    groups.append('circle')
+                        .attr('r', function(d, i){
+                          return rScale(parseInt(d.values[0].TG));
+                        })
+                        .attr('opacity', 0.6)
+                        .attr('fill', function(d){
+                          return color(parseInt(d.values[0].TG));
+                        })
+                        .attr('cy', function(d, i){
+                            return yScale(parseInt(d.values[0].TG) / 10);
+                        })
 
-                var groups = d3.select('svg')
-                    .selectAll('g')
-                    .data(temp_data)
-                    .enter()
-                    .append('g')
-                    .attr('transform', function(d, i){
-                        return 'translate(' + xScale(i) + ',0)';
-                    })
+                }
 
-                groups.append('circle')
-                    .attr('r', function(d, i){
-                      return rScale(parseInt(d.values[0].TG));
-                    })
-                    .attr('opacity', 0.6)
-                    .attr('fill', function(d){
-                      return color(parseInt(d.values[0].TG));
-                    })
-                    .attr('cy', function(d, i){
-                        return yScale(parseInt(d.values[0].TG) /10);
-                    })
+                    update(temp_data);
 
             });
         
