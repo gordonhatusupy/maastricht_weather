@@ -6,7 +6,7 @@
 
     </head>
         <body>
-            <select>
+            <select id="selector">
                 <!-- data/mean_temp_maastricht.csv -->              
                 <option value="maastricht">Maastricht</option>
                 <!-- data/mean_temp_debilt.csv -->              
@@ -16,126 +16,149 @@
             <div class="container"></div>
 
         <script>
+            
+            // SVG config
+            var h = 350;
+            var w = 960;
+            var padding = 30;
 
-            d3.csv('data/mean_temp_maastricht.csv', function(data){
+            // Add svg container for bubble_plot
+            var svg = d3.select('.container')
+                .append('svg')
+                .attr('id', '#bubble_plot')
+                .attr('height', h)
+                .attr('width', w);
+                    
+            // ** add mouse behaviour to dropdown
+            d3.select('#selector')
+                .on('change', function(){
+                    // construct the path based on option value
+                    var path = 'data/mean_temp_' + this.value + '.csv';
+                    updateChart(path);
+                })
+            
+            function updateChart(path){
 
-                var temp_data = d3.nest()
-                                .key(function(d){
-                                    return d.YYYYMMDD;
+                    d3.csv(path, function(_data){
+
+                        var data = d3.nest()
+                                        .key(function(d){
+                                            return d.YYYYMMDD;
+                                        })
+                                        .sortKeys(d3.ascending)
+                                        .entries(_data)
+                        
+                        // Set up colorscale
+                            var ext = d3.extent(data, function(d){
+                              return parseInt(d.values[0].TG);
+                            });
+
+                            var color = d3.scale.linear()
+                                .domain([ext[0], ext[1]])
+                                .range(["#94FDFF", "#FF004E"]);
+
+                        // Radius scale
+                            var rScale = d3.scale.linear()
+                                 .domain([0, ext[1]])
+                                 .range([2, 10]);
+
+                        // Set up scales
+                            var xScale = d3.scale.linear()
+                                 .domain([0, data.length])
+                                 .range([padding, w - padding]);
+
+                            var yScale = d3.scale.linear()
+                                 .domain([ext[0] /10, (ext[1] + 15) / 10])
+                                 .range([h - padding, padding]);
+
+                        // Set up Axis
+                            var xAxis = d3.svg.axis()
+                              .scale(xScale)
+                              .orient("bottom")
+                              .tickSize(2)
+                              .tickValues(xScale.domain())
+
+                            var yAxis = d3.svg.axis()
+                              .scale(yScale)
+                              .orient("left")
+                              .ticks(10)
+
+                        // Add Month Grid
+                            var months = d3.select('svg')
+                                .selectAll('rect')
+                                .data(data)
+                                
+                            months.enter()
+                                .append('rect')
+                            
+                            months.attr('fill', function(d, i){
+                                    str = d.key
+                                    calc_str = str.slice(4, -2)
+                                    if(calc_str % 2 != 0){
+                                        return '#ffffff'
+                                    }else{
+                                        return '#fafafa'
+                                    }
                                 })
-                                .sortKeys(d3.ascending)
-                                .entries(data)
+                                .attr('width', 2)
+                                .attr('height', h - padding * 2)
+                                .attr('x', function(d, i){
+                                    return xScale(i)
+                                })
+                                .attr('y', 0 + padding)
+                            
+                            months.exit()
+                                .remove();
 
-                function update(_data){
+                        // Call Axis
+                            svg.append("g")
+                                .attr("class", "axis")
+                                .attr("transform", "translate(" + padding + ",0)")
+                                .call(yAxis);
 
-                // SVG config
-                    var h = 350;
-                    var w = 960;
-                    var padding = 30;
+                            svg.append("g")
+                                .attr("class", "axis") 
+                                .attr("transform", "translate(0," + (h - padding) + ")")
+                                .call(xAxis);
 
-                // Set up colorscale
-                    var ext = d3.extent(_data, function(d){
-                      return parseInt(d.values[0].TG);
-                    });
+                        // Add groups for circles
+                            var groups = d3.select('svg')
+                                .selectAll('g')
+                                .data(data)
+                            
+                            groups.enter()
+                                .append('g')
+                                .attr('opacity', 1)
+                                .attr('transform', function(d, i){
+                                    return 'translate(' + xScale(i) + ',0)';
+                                })
+                                .append('circle')
+                                .attr('cy', h)
 
-                    var color = d3.scale.linear()
-                        .domain([ext[0], ext[1]])
-                        .range(["#94FDFF", "#FF004E"]);
+                                
 
-                // Radius scale
-                    var rScale = d3.scale.linear()
-                         .domain([0, ext[1]])
-                         .range([2, 10]);
+                        // Add circles to groups
+                            groups.select('circle')
+                                .attr('r', function(d, i){
+                                  return rScale(parseInt(d.values[0].TG));
+                                })
+                                .attr('opacity', 0.6)
+                                .attr('fill', function(d){
+                                  return color(parseInt(d.values[0].TG));
+                                })
+                                .transition()
+                                .attr('cy', function(d, i){
+                                    return yScale(parseInt(d.values[0].TG) / 10);
+                                })
+                            
+                            groups.exit()
+                                .remove()
 
-                // Set up scales
-                    var xScale = d3.scale.linear()
-                         .domain([0, _data.length])
-                         .range([padding, w - padding]);
 
-                    var yScale = d3.scale.linear()
-                         .domain([ext[0] /10, (ext[1] + 15) / 10])
-                         .range([h - padding, padding]);
-
-                // Set up Axis
-                    var xAxis = d3.svg.axis()
-                      .scale(xScale)
-                      .orient("bottom")
-                      .tickSize(2)
-                      .tickValues(xScale.domain())
-
-                    var yAxis = d3.svg.axis()
-                      .scale(yScale)
-                      .orient("left")
-                      .ticks(10)
-
-                // Add svg container for bubble_plot
-                    var svg = d3.select('.container')
-                        .append('svg')
-                        .attr('id', '#bubble_plot')
-                        .attr('height', h)
-                        .attr('width', w);
-
-                // Add Month Grid
-                    var months = d3.select('svg')
-                        .selectAll('rect')
-                        .data(_data)
-                        .enter()
-                        .append('rect')
-                        .attr('fill', function(d, i){
-                            str = d.key
-                            calc_str = str.slice(4, -2)
-                            if(calc_str % 2 != 0){
-                                return '#ffffff'
-                            }else{
-                                return '#fafafa'
-                            }
-                        })
-                        .attr('width', 2)
-                        .attr('height', h - padding * 2)
-                        .attr('x', function(d, i){
-                            return xScale(i)
-                        })
-                        .attr('y', 0 + padding)
-
-                // Call Axis
-                    svg.append("g")
-                        .attr("class", "axis")
-                        .attr("transform", "translate(" + padding + ",0)")
-                        .call(yAxis);
-
-                    svg.append("g")
-                        .attr("class", "axis") 
-                        .attr("transform", "translate(0," + (h - padding) + ")")
-                        .call(xAxis);
-
-                // Add groups for circles
-                    var groups = d3.select('svg')
-                        .selectAll('g')
-                        .data(_data)
-                        .enter()
-                        .append('g')
-                        .attr('transform', function(d, i){
-                            return 'translate(' + xScale(i) + ',0)';
-                        })
-
-                // Add circles to groups
-                    groups.append('circle')
-                        .attr('r', function(d, i){
-                          return rScale(parseInt(d.values[0].TG));
-                        })
-                        .attr('opacity', 0.6)
-                        .attr('fill', function(d){
-                          return color(parseInt(d.values[0].TG));
-                        })
-                        .attr('cy', function(d, i){
-                            return yScale(parseInt(d.values[0].TG) / 10);
-                        })
-
-                }
-
-                    update(temp_data);
-
-            });
+                        });
+            }
+            
+            updateChart('data/mean_temp_maastricht.csv');
         
         </script>
     </body>
