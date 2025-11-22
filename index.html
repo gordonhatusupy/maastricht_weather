@@ -1,11 +1,13 @@
 <html>
     <head>
+        <title>Climate data</title>
         <script src="js/d3.min.js"></script>
         <script src="js/underscore.js"></script>
         <link rel="stylesheet" type="text/css" href="css/style.css">
 
     </head>
         <body>
+            <h1>Climate data</h1>
             <select id="selector">
                 <!-- data/mean_temp_maastricht.csv -->              
                 <option value="maastricht">Maastricht</option>
@@ -57,10 +59,14 @@
                                 .domain([ext[0], ext[1]])
                                 .range(["#94FDFF", "#FF004E"]);
 
-                        // Radius scale
+                        // Radius scale - now based on sunshine duration (SQ)
+                            var sqExt = d3.extent(data, function(d){
+                              return parseInt(d.values[0].SQ);
+                            });
+
                             var rScale = d3.scale.linear()
-                                 .domain([0, ext[1]])
-                                 .range([2, 10]);
+                                 .domain([sqExt[0], sqExt[1]])
+                                 .range([2, 15]);
 
                         // Set up scales
                             var xScale = d3.scale.linear()
@@ -140,7 +146,7 @@
                         // Add circles to groups
                             groups.select('circle')
                                 .attr('r', function(d, i){
-                                  return rScale(parseInt(d.values[0].TG));
+                                  return rScale(parseInt(d.values[0].SQ));
                                 })
                                 .attr('opacity', 0.6)
                                 .attr('fill', function(d){
